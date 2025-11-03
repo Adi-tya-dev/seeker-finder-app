@@ -1,13 +1,52 @@
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Search, Package } from "lucide-react";
+import { Search, Package, LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/components/ui/use-toast";
 import heroBg from "@/assets/hero-bg.jpg";
 
 const Index = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const [user, setUser] = useState<any>(null);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    toast({
+      title: "Logged out",
+      description: "You have been logged out successfully",
+    });
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted">
+      {/* Auth Actions */}
+      <div className="absolute top-4 right-4 z-10 flex gap-2">
+        {user ? (
+          <Button variant="secondary" onClick={handleLogout}>
+            <LogOut className="mr-2 h-4 w-4" />
+            Logout
+          </Button>
+        ) : (
+          <Button variant="secondary" onClick={() => navigate('/auth')}>
+            Login / Sign Up
+          </Button>
+        )}
+      </div>
+
       {/* Hero Section */}
       <section className="relative overflow-hidden">
         <div 

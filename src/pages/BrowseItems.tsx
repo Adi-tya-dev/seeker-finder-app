@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -6,55 +6,109 @@ import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeft, MapPin, Calendar, Clock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/components/ui/use-toast";
+import ChatDialog from "@/components/ChatDialog";
 
-// Mock data - replace with real data from backend
-const mockItems = [
-  {
-    id: 1,
-    building: "Engineering Block A",
-    classroom: "Room 301",
-    date: "2025-11-02",
-    time: "14:30",
-    description: "Black iPhone with cracked screen",
-    image: "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=400"
-  },
-  {
-    id: 2,
-    building: "Library",
-    classroom: "Study Hall 2",
-    date: "2025-11-01",
-    time: "10:15",
-    description: "Blue water bottle with stickers",
-    image: "https://images.unsplash.com/photo-1602143407151-7111542de6e8?w=400"
-  },
-  {
-    id: 3,
-    building: "Science Building",
-    classroom: "Lab 105",
-    date: "2025-10-31",
-    time: "16:45",
-    description: "Grey backpack with laptop inside",
-    image: "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=400"
-  },
-  {
-    id: 4,
-    building: "Engineering Block A",
-    classroom: "Room 205",
-    date: "2025-10-30",
-    time: "11:20",
-    description: "Red umbrella",
-    image: "https://images.unsplash.com/photo-1534655882569-31e0d425c0f4?w=400"
-  }
-];
+interface Item {
+  id: string;
+  building: string;
+  classroom: string;
+  date: string;
+  time: string;
+  description: string;
+  image_url: string | null;
+  uploader_id: string;
+  profiles: {
+    id: string;
+    full_name: string | null;
+    email: string;
+  };
+}
 
 const BrowseItems = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const [user, setUser] = useState<any>(null);
+  const [items, setItems] = useState<Item[]>([]);
   const [selectedBuilding, setSelectedBuilding] = useState<string>("all");
   const [selectedDate, setSelectedDate] = useState<string>("");
+  const [buildings, setBuildings] = useState<string[]>(["all"]);
+  const [selectedItem, setSelectedItem] = useState<Item | null>(null);
+  const [isChatOpen, setIsChatOpen] = useState(false);
 
-  const buildings = ["all", "Engineering Block A", "Library", "Science Building"];
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+    });
 
-  const filteredItems = mockItems.filter(item => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    fetchItems();
+  }, []);
+
+  const fetchItems = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('items')
+        .select(`
+          *,
+          profiles (
+            id,
+            full_name,
+            email
+          )
+        `)
+        .eq('status', 'available')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      setItems(data || []);
+
+      // Extract unique buildings
+      const uniqueBuildings = Array.from(new Set(data?.map(item => item.building) || []));
+      setBuildings(['all', ...uniqueBuildings]);
+    } catch (error: any) {
+      toast({
+        title: "Error loading items",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleClaimClick = (item: Item) => {
+    if (!user) {
+      toast({
+        title: "Login required",
+        description: "Please login to claim items",
+        variant: "destructive",
+      });
+      navigate('/auth');
+      return;
+    }
+
+    if (user.id === item.uploader_id) {
+      toast({
+        title: "Cannot claim",
+        description: "You cannot claim your own item",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSelectedItem(item);
+    setIsChatOpen(true);
+  };
+
+  const filteredItems = items.filter(item => {
     const buildingMatch = selectedBuilding === "all" || item.building === selectedBuilding;
     const dateMatch = !selectedDate || item.date === selectedDate;
     return buildingMatch && dateMatch;
@@ -123,11 +177,17 @@ const BrowseItems = () => {
                   style={{ animationDelay: `${index * 0.1}s` }}
                 >
                   <div className="aspect-video overflow-hidden bg-muted">
-                    <img 
-                      src={item.image} 
-                      alt={item.description}
-                      className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
-                    />
+                    {item.image_url ? (
+                      <img 
+                        src={item.image_url} 
+                        alt={item.description}
+                        className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-muted">
+                        <span className="text-muted-foreground">No image</span>
+                      </div>
+                    )}
                   </div>
                   <div className="p-4 space-y-3">
                     <p className="font-semibold text-lg">{item.description}</p>
@@ -145,7 +205,11 @@ const BrowseItems = () => {
                         <span>{item.time}</span>
                       </div>
                     </div>
-                    <Button className="w-full" variant="secondary">
+                    <Button 
+                      className="w-full" 
+                      variant="secondary"
+                      onClick={() => handleClaimClick(item)}
+                    >
                       Claim This Item
                     </Button>
                   </div>
@@ -161,6 +225,16 @@ const BrowseItems = () => {
           </div>
         </div>
       </div>
+
+      {selectedItem && user && (
+        <ChatDialog
+          isOpen={isChatOpen}
+          onClose={() => setIsChatOpen(false)}
+          uploaderProfile={selectedItem.profiles}
+          itemId={selectedItem.id}
+          currentUserId={user.id}
+        />
+      )}
     </div>
   );
 };

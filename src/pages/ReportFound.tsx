@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -6,46 +6,100 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { ArrowLeft, Upload, Check } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/components/ui/use-toast";
 
 const ReportFound = () => {
   const navigate = useNavigate();
-  const [image, setImage] = useState<File | null>(null);
-  const [preview, setPreview] = useState<string>("");
+  const { toast } = useToast();
+  const [user, setUser] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [imagePreview, setImagePreview] = useState<string>("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [submitted, setSubmitted] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) {
+        navigate('/auth');
+      } else {
+        setUser(session.user);
+      }
+    });
+  }, [navigate]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setImage(file);
+      setImageFile(file);
       const reader = new FileReader();
       reader.onloadend = () => {
-        setPreview(reader.result as string);
+        setImagePreview(reader.result as string);
       };
       reader.readAsDataURL(file);
     }
   };
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    
-    // Here you would typically send the data to your backend
-    console.log({
-      building: formData.get('building'),
-      classroom: formData.get('classroom'),
-      date: formData.get('date'),
-      time: formData.get('time'),
-      description: formData.get('description'),
-      image: image
-    });
+    if (!user) return;
 
-    setSubmitted(true);
-    toast.success("Item reported successfully!");
-    
-    setTimeout(() => {
-      navigate('/browse-items');
-    }, 2000);
+    setIsLoading(true);
+    const formData = new FormData(e.currentTarget);
+
+    try {
+      let imageUrl = null;
+
+      // Upload image if provided
+      if (imageFile) {
+        const fileExt = imageFile.name.split('.').pop();
+        const fileName = `${Math.random()}.${fileExt}`;
+        const { error: uploadError } = await supabase.storage
+          .from('item-images')
+          .upload(fileName, imageFile);
+
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('item-images')
+          .getPublicUrl(fileName);
+
+        imageUrl = publicUrl;
+      }
+
+      // Insert item
+      const { error: insertError } = await supabase
+        .from('items')
+        .insert({
+          uploader_id: user.id,
+          building: formData.get('building') as string,
+          classroom: formData.get('classroom') as string,
+          date: formData.get('date') as string,
+          time: formData.get('time') as string,
+          description: formData.get('description') as string,
+          image_url: imageUrl,
+        });
+
+      if (insertError) throw insertError;
+
+      setSubmitted(true);
+      toast({
+        title: "Success",
+        description: "Item reported successfully!",
+      });
+
+      setTimeout(() => {
+        navigate('/browse-items');
+      }, 2000);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   if (submitted) {
@@ -134,17 +188,18 @@ const ReportFound = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="description">Item Description</Label>
+                <Label htmlFor="description">Item Description *</Label>
                 <Textarea 
                   id="description" 
                   name="description"
                   placeholder="Describe the item (color, brand, distinctive features...)"
                   className="min-h-24"
+                  required
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="image">Upload Image *</Label>
+                <Label htmlFor="image">Upload Image</Label>
                 <div className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary transition-colors cursor-pointer">
                   <input
                     type="file"
@@ -153,13 +208,12 @@ const ReportFound = () => {
                     accept="image/*"
                     onChange={handleImageChange}
                     className="hidden"
-                    required
                   />
                   <label htmlFor="image" className="cursor-pointer">
-                    {preview ? (
+                    {imagePreview ? (
                       <div className="space-y-4">
                         <img 
-                          src={preview} 
+                          src={imagePreview} 
                           alt="Preview" 
                           className="max-h-48 mx-auto rounded-lg object-cover"
                         />
@@ -181,8 +235,9 @@ const ReportFound = () => {
                 type="submit" 
                 size="lg"
                 className="w-full bg-gradient-to-r from-primary to-accent hover:opacity-90"
+                disabled={isLoading}
               >
-                Submit Report
+                {isLoading ? "Submitting..." : "Submit Report"}
               </Button>
             </form>
           </Card>

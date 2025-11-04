@@ -41,6 +41,10 @@ const Index = () => {
               <MessageCircle className="mr-2 h-4 w-4" />
               Messages
             </Button>
+            <Button variant="secondary" onClick={() => navigate('/my-items')}>
+              <Package className="mr-2 h-4 w-4" />
+              My Items
+            </Button>
             <Button variant="secondary" onClick={handleLogout}>
               <LogOut className="mr-2 h-4 w-4" />
               Logout

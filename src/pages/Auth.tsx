@@ -8,19 +8,18 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { ArrowLeft } from "lucide-react";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+
 
 const Auth = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [loginEmail, setLoginEmail] = useState("");
-  const [loginPassword, setLoginPassword] = useState("");
+  const [otpCode, setOtpCode] = useState("");
+  const [showOtpInput, setShowOtpInput] = useState(false);
   const [signupEmail, setSignupEmail] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
   const [signupFullName, setSignupFullName] = useState("");
-  const [resetEmail, setResetEmail] = useState("");
-  const [showResetDialog, setShowResetDialog] = useState(false);
 
   useEffect(() => {
     // Check if user is already logged in
@@ -39,18 +38,47 @@ const Auth = () => {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { error } = await supabase.auth.signInWithOtp({
       email: loginEmail,
-      password: loginPassword,
+      options: {
+        emailRedirectTo: `${window.location.origin}/`,
+      },
     });
 
     if (error) {
       toast({
-        title: "Login failed",
+        title: "Failed to send OTP",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Check your email",
+        description: "We sent you a 6-digit code",
+      });
+      setShowOtpInput(true);
+    }
+
+    setIsLoading(false);
+  };
+
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    const { error } = await supabase.auth.verifyOtp({
+      email: loginEmail,
+      token: otpCode,
+      type: 'email',
+    });
+
+    if (error) {
+      toast({
+        title: "Verification failed",
         description: error.message,
         variant: "destructive",
       });
@@ -95,31 +123,6 @@ const Auth = () => {
     setIsLoading(false);
   };
 
-  const handlePasswordReset = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-
-    const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
-
-    if (error) {
-      toast({
-        title: "Reset failed",
-        description: error.message,
-        variant: "destructive",
-      });
-    } else {
-      toast({
-        title: "Check your email",
-        description: "We sent you a password reset link",
-      });
-      setShowResetDialog(false);
-      setResetEmail("");
-    }
-
-    setIsLoading(false);
-  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted flex items-center justify-center p-4">
@@ -146,40 +149,56 @@ const Auth = () => {
               </TabsList>
 
               <TabsContent value="login">
-                <form onSubmit={handleLogin} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="login-email">Email</Label>
-                    <Input
-                      id="login-email"
-                      type="email"
-                      placeholder="you@example.com"
-                      value={loginEmail}
-                      onChange={(e) => setLoginEmail(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="login-password">Password</Label>
-                    <Input
-                      id="login-password"
-                      type="password"
-                      value={loginPassword}
-                      onChange={(e) => setLoginPassword(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <Button type="submit" className="w-full" disabled={isLoading}>
-                    {isLoading ? "Loading..." : "Login"}
-                  </Button>
-                  <Button 
-                    type="button" 
-                    variant="link" 
-                    className="w-full text-sm" 
-                    onClick={() => setShowResetDialog(true)}
-                  >
-                    Forgot Password?
-                  </Button>
-                </form>
+                {!showOtpInput ? (
+                  <form onSubmit={handleSendOtp} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="login-email">Email</Label>
+                      <Input
+                        id="login-email"
+                        type="email"
+                        placeholder="you@example.com"
+                        value={loginEmail}
+                        onChange={(e) => setLoginEmail(e.target.value)}
+                        required
+                      />
+                    </div>
+                    <Button type="submit" className="w-full" disabled={isLoading}>
+                      {isLoading ? "Sending..." : "Send Login Code"}
+                    </Button>
+                    <p className="text-xs text-muted-foreground text-center">
+                      We'll send a 6-digit code to your email
+                    </p>
+                  </form>
+                ) : (
+                  <form onSubmit={handleVerifyOtp} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="otp-code">Enter 6-digit code</Label>
+                      <Input
+                        id="otp-code"
+                        type="text"
+                        placeholder="123456"
+                        value={otpCode}
+                        onChange={(e) => setOtpCode(e.target.value)}
+                        required
+                        maxLength={6}
+                      />
+                    </div>
+                    <Button type="submit" className="w-full" disabled={isLoading}>
+                      {isLoading ? "Verifying..." : "Verify Code"}
+                    </Button>
+                    <Button 
+                      type="button" 
+                      variant="link" 
+                      className="w-full text-sm" 
+                      onClick={() => {
+                        setShowOtpInput(false);
+                        setOtpCode("");
+                      }}
+                    >
+                      Use different email
+                    </Button>
+                  </form>
+                )}
               </TabsContent>
 
               <TabsContent value="signup">
@@ -225,33 +244,6 @@ const Auth = () => {
             </Tabs>
           </CardContent>
         </Card>
-
-        <Dialog open={showResetDialog} onOpenChange={setShowResetDialog}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Reset Password</DialogTitle>
-              <DialogDescription>
-                Enter your email address and we'll send you a link to reset your password.
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handlePasswordReset} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="reset-email">Email</Label>
-                <Input
-                  id="reset-email"
-                  type="email"
-                  placeholder="you@example.com"
-                  value={resetEmail}
-                  onChange={(e) => setResetEmail(e.target.value)}
-                  required
-                />
-              </div>
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Sending..." : "Send Reset Link"}
-              </Button>
-            </form>
-          </DialogContent>
-        </Dialog>
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Search, Package, LogOut } from "lucide-react";
+import { Search, Package, LogOut, MessageCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
@@ -36,10 +36,16 @@ const Index = () => {
       {/* Auth Actions */}
       <div className="absolute top-4 right-4 z-10 flex gap-2">
         {user ? (
-          <Button variant="secondary" onClick={handleLogout}>
-            <LogOut className="mr-2 h-4 w-4" />
-            Logout
-          </Button>
+          <>
+            <Button variant="secondary" onClick={() => navigate('/messages')}>
+              <MessageCircle className="mr-2 h-4 w-4" />
+              Messages
+            </Button>
+            <Button variant="secondary" onClick={handleLogout}>
+              <LogOut className="mr-2 h-4 w-4" />
+              Logout
+            </Button>
+          </>
         ) : (
           <Button variant="secondary" onClick={() => navigate('/auth')}>
             Login / Sign Up

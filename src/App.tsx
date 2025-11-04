@@ -7,6 +7,8 @@ import Index from "./pages/Index";
 import ReportFound from "./pages/ReportFound";
 import BrowseItems from "./pages/BrowseItems";
 import Auth from "./pages/Auth";
+import ResetPassword from "./pages/ResetPassword";
+import Messages from "./pages/Messages";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -20,6 +22,8 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<Auth />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/messages" element={<Messages />} />
           <Route path="/report-found" element={<ReportFound />} />
           <Route path="/browse-items" element={<BrowseItems />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

@@ -1,15 +1,35 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Search, Package, LogOut, MessageCircle } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Search, Package, MessageCircle, User, Calendar, MapPin, Clock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import heroBg from "@/assets/hero-bg.jpg";
+
+interface Item {
+  id: string;
+  building: string;
+  classroom: string;
+  date: string;
+  time: string;
+  description: string;
+  image_url: string | null;
+  status: string;
+}
 
 const Index = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [user, setUser] = useState<any>(null);
+  const [returnedItems, setReturnedItems] = useState<Item[]>([]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -20,8 +40,26 @@ const Index = () => {
       setUser(session?.user ?? null);
     });
 
+    fetchReturnedItems();
+
     return () => subscription.unsubscribe();
   }, []);
+
+  const fetchReturnedItems = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('items')
+        .select('*')
+        .eq('status', 'returned')
+        .order('created_at', { ascending: false })
+        .limit(6);
+
+      if (error) throw error;
+      setReturnedItems(data || []);
+    } catch (error: any) {
+      console.error('Error fetching returned items:', error);
+    }
+  };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -34,7 +72,7 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted">
       {/* Auth Actions */}
-      <div className="absolute top-4 right-4 z-10 flex gap-2">
+      <div className="absolute top-4 right-4 z-10 flex gap-2 items-center">
         {user ? (
           <>
             <Button variant="secondary" onClick={() => navigate('/messages')}>
@@ -45,10 +83,30 @@ const Index = () => {
               <Package className="mr-2 h-4 w-4" />
               My Items
             </Button>
-            <Button variant="secondary" onClick={handleLogout}>
-              <LogOut className="mr-2 h-4 w-4" />
-              Logout
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button 
+                  variant="secondary" 
+                  size="icon"
+                  className="rounded-full"
+                >
+                  <Avatar className="h-9 w-9">
+                    <AvatarFallback className="bg-primary text-primary-foreground">
+                      {user.email?.[0].toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem onClick={() => navigate('/profile')} className="cursor-pointer">
+                  <User className="mr-2 h-4 w-4" />
+                  Profile
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-destructive">
+                  Logout
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </>
         ) : (
           <Button variant="secondary" onClick={() => navigate('/auth')}>
@@ -130,6 +188,52 @@ const Index = () => {
           </div>
         </div>
       </section>
+
+      {/* Returned Items Section */}
+      {returnedItems.length > 0 && (
+        <section className="container mx-auto px-4 py-16">
+          <h2 className="text-3xl font-bold text-center mb-12">Recently Returned Items</h2>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
+            {returnedItems.map((item) => (
+              <Card key={item.id} className="overflow-hidden">
+                <div className="aspect-video overflow-hidden bg-muted">
+                  {item.image_url ? (
+                    <img 
+                      src={item.image_url} 
+                      alt={item.description}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-muted">
+                      <span className="text-muted-foreground">No image</span>
+                    </div>
+                  )}
+                </div>
+                <CardContent className="p-4 space-y-3">
+                  <p className="font-semibold text-lg">{item.description}</p>
+                  <div className="space-y-1 text-sm text-muted-foreground">
+                    <div className="flex items-center gap-2">
+                      <MapPin className="w-4 h-4" />
+                      <span>{item.building} - {item.classroom}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Calendar className="w-4 h-4" />
+                      <span>{new Date(item.date).toLocaleDateString()}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Clock className="w-4 h-4" />
+                      <span>{item.time}</span>
+                    </div>
+                  </div>
+                  <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 inline-block">
+                    Returned to Owner
+                  </span>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Info Section */}
       <section className="container mx-auto px-4 py-16">

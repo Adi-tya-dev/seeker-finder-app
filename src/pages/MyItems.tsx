@@ -80,6 +80,32 @@ const MyItems = () => {
     }
   };
 
+  const handleMarkAsReturned = async (itemId: string) => {
+    try {
+      const { error } = await supabase
+        .from('items')
+        .update({ status: 'returned' })
+        .eq('id', itemId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Item marked as returned",
+      });
+
+      setItems(items.map(item => 
+        item.id === itemId ? { ...item, status: 'returned' } : item
+      ));
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleDelete = async () => {
     if (!deleteItemId) return;
 
@@ -166,22 +192,35 @@ const MyItems = () => {
                           <span>{item.time}</span>
                         </div>
                       </div>
-                      <div className="flex items-center justify-between pt-2">
-                        <span className={`text-xs px-2 py-1 rounded-full ${
+                      <div className="space-y-2 pt-2">
+                        <span className={`text-xs px-2 py-1 rounded-full inline-block ${
                           item.status === 'available' 
                             ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
-                            : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
+                            : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
                         }`}>
                           {item.status}
                         </span>
-                        <Button 
-                          variant="destructive" 
-                          size="sm"
-                          onClick={() => setDeleteItemId(item.id)}
-                        >
-                          <Trash2 className="h-4 w-4 mr-1" />
-                          Delete
-                        </Button>
+                        <div className="flex gap-2">
+                          {item.status === 'available' && (
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              className="flex-1"
+                              onClick={() => handleMarkAsReturned(item.id)}
+                            >
+                              Mark as Returned
+                            </Button>
+                          )}
+                          <Button 
+                            variant="destructive" 
+                            size="sm"
+                            className="flex-1"
+                            onClick={() => setDeleteItemId(item.id)}
+                          >
+                            <Trash2 className="h-4 w-4 mr-1" />
+                            Delete
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   </Card>

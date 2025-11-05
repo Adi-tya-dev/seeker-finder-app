@@ -165,28 +165,28 @@ const ChatDialog = ({ isOpen, onClose, uploaderProfile, itemId, currentUserId }:
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[500px] h-[600px] flex flex-col">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Avatar>
-              <AvatarFallback>
+      <DialogContent className="sm:max-w-[500px] h-[600px] flex flex-col p-0">
+        <DialogHeader className="px-6 pt-6 pb-4 border-b">
+          <DialogTitle className="flex items-center gap-3">
+            <Avatar className="h-10 w-10">
+              <AvatarFallback className="bg-primary text-primary-foreground">
                 {uploaderProfile.full_name?.[0] || uploaderProfile.email[0].toUpperCase()}
               </AvatarFallback>
             </Avatar>
             <div>
-              <div>{uploaderProfile.full_name || "User"}</div>
-              <div className="text-sm text-muted-foreground font-normal">
+              <div className="font-semibold">{uploaderProfile.full_name || "User"}</div>
+              <div className="text-xs text-muted-foreground font-normal">
                 {uploaderProfile.email}
               </div>
             </div>
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="sr-only">
             Chat with the person who found this item
           </DialogDescription>
         </DialogHeader>
 
         <ScrollArea ref={scrollRef} className="flex-1 pr-4">
-          <div className="space-y-4">
+          <div className="space-y-4 p-4">
             {messages.map((message) => (
               <div
                 key={message.id}
@@ -195,37 +195,57 @@ const ChatDialog = ({ isOpen, onClose, uploaderProfile, itemId, currentUserId }:
                 }`}
               >
                 {message.sender_id !== currentUserId && (
-                  <Avatar className="h-8 w-8">
+                  <Avatar className="h-8 w-8 flex-shrink-0">
                     <AvatarFallback className="text-xs">
                       <User className="h-4 w-4" />
                     </AvatarFallback>
                   </Avatar>
                 )}
                 <div
-                  className={`rounded-lg px-4 py-2 max-w-[70%] ${
+                  className={`rounded-2xl px-4 py-2 max-w-[70%] break-words ${
                     message.sender_id === currentUserId
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted"
+                      ? "bg-primary text-primary-foreground rounded-br-sm"
+                      : "bg-muted rounded-bl-sm"
                   }`}
                 >
-                  <p className="text-sm">{message.content}</p>
-                  <p className="text-xs opacity-70 mt-1">
-                    {new Date(message.created_at).toLocaleTimeString()}
+                  <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                  <p className={`text-[10px] mt-1 ${
+                    message.sender_id === currentUserId 
+                      ? "text-primary-foreground/70" 
+                      : "text-muted-foreground"
+                  }`}>
+                    {new Date(message.created_at).toLocaleTimeString([], { 
+                      hour: '2-digit', 
+                      minute: '2-digit' 
+                    })}
                   </p>
                 </div>
+                {message.sender_id === currentUserId && (
+                  <Avatar className="h-8 w-8 flex-shrink-0">
+                    <AvatarFallback className="text-xs bg-primary text-primary-foreground">
+                      {uploaderProfile.full_name?.[0] || uploaderProfile.email[0].toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                )}
               </div>
             ))}
           </div>
         </ScrollArea>
 
-        <form onSubmit={sendMessage} className="flex gap-2 pt-4 border-t">
+        <form onSubmit={sendMessage} className="flex gap-2 p-4 border-t bg-muted/30">
           <Input
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
             placeholder="Type a message..."
             disabled={isLoading}
+            className="flex-1"
           />
-          <Button type="submit" size="icon" disabled={isLoading || !newMessage.trim()}>
+          <Button 
+            type="submit" 
+            size="icon" 
+            disabled={isLoading || !newMessage.trim()}
+            className="rounded-full"
+          >
             <Send className="h-4 w-4" />
           </Button>
         </form>

@@ -5,18 +5,16 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Upload, Check } from "lucide-react";
+import { ArrowLeft, Check } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 
-const ReportFound = () => {
+const RecoverItem = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [user, setUser] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [imagePreview, setImagePreview] = useState<string>("");
-  const [imageFile, setImageFile] = useState<File | null>(null);
   const [submitted, setSubmitted] = useState(false);
 
   useEffect(() => {
@@ -29,18 +27,6 @@ const ReportFound = () => {
     });
   }, [navigate]);
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setImageFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!user) return;
@@ -49,26 +35,6 @@ const ReportFound = () => {
     const formData = new FormData(e.currentTarget);
 
     try {
-      let imageUrl = null;
-
-      // Upload image if provided
-      if (imageFile) {
-        const fileExt = imageFile.name.split('.').pop();
-        const fileName = `${Math.random()}.${fileExt}`;
-        const { error: uploadError } = await supabase.storage
-          .from('item-images')
-          .upload(fileName, imageFile);
-
-        if (uploadError) throw uploadError;
-
-        const { data: { publicUrl } } = supabase.storage
-          .from('item-images')
-          .getPublicUrl(fileName);
-
-        imageUrl = publicUrl;
-      }
-
-      // Insert item
       const { error: insertError } = await supabase
         .from('items')
         .insert({
@@ -79,7 +45,7 @@ const ReportFound = () => {
           time: formData.get('time') as string,
           description: formData.get('description') as string,
           category: formData.get('category') as string,
-          image_url: imageUrl,
+          status: 'available',
         });
 
       if (insertError) throw insertError;
@@ -87,7 +53,7 @@ const ReportFound = () => {
       setSubmitted(true);
       toast({
         title: "Success",
-        description: "Item reported successfully!",
+        description: "Lost item reported successfully!",
       });
 
       setTimeout(() => {
@@ -111,12 +77,12 @@ const ReportFound = () => {
           <div className="w-20 h-20 bg-gradient-to-br from-primary to-accent rounded-full flex items-center justify-center mx-auto mb-6">
             <Check className="w-10 h-10 text-primary-foreground" />
           </div>
-          <h2 className="text-2xl font-bold mb-2">Thank You!</h2>
+          <h2 className="text-2xl font-bold mb-2">Report Submitted!</h2>
           <p className="text-muted-foreground mb-6">
-            Your found item has been reported successfully. Someone will be very happy to find it!
+            Your lost item has been reported. We hope you find it soon!
           </p>
           <Button onClick={() => navigate('/browse-items')} className="w-full">
-            View All Items
+            Browse Items
           </Button>
         </Card>
       </div>
@@ -138,10 +104,10 @@ const ReportFound = () => {
         <div className="max-w-2xl mx-auto">
           <div className="text-center mb-8 animate-fade-in">
             <h1 className="text-4xl font-bold mb-3 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-              Report Found Item
+              Report Lost Item
             </h1>
             <p className="text-muted-foreground">
-              Help someone reunite with their belongings by providing details
+              Tell us what you lost and we'll help you find it
             </p>
           </div>
 
@@ -158,18 +124,18 @@ const ReportFound = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="classroom">Classroom/Location Number *</Label>
+                <Label htmlFor="classroom">Last Known Location *</Label>
                 <Input 
                   id="classroom" 
                   name="classroom"
-                  placeholder="e.g., Room 301"
+                  placeholder="e.g., Room 301, Cafeteria"
                   required
                 />
               </div>
 
               <div className="grid md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="date">Date Found *</Label>
+                  <Label htmlFor="date">Date Lost *</Label>
                   <Input 
                     id="date" 
                     name="date"
@@ -179,7 +145,7 @@ const ReportFound = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="time">Time Found *</Label>
+                  <Label htmlFor="time">Approximate Time *</Label>
                   <Input 
                     id="time" 
                     name="time"
@@ -191,7 +157,7 @@ const ReportFound = () => {
 
               <div className="space-y-2">
                 <Label htmlFor="category">Item Category *</Label>
-                <Select name="category" defaultValue="other" required>
+                <Select name="category" required>
                   <SelectTrigger id="category">
                     <SelectValue placeholder="Select category" />
                   </SelectTrigger>
@@ -213,43 +179,10 @@ const ReportFound = () => {
                 <Textarea 
                   id="description" 
                   name="description"
-                  placeholder="Describe the item (color, brand, distinctive features...)"
+                  placeholder="Describe the item in detail (color, brand, distinctive features...)"
                   className="min-h-24"
                   required
                 />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="image">Upload Image</Label>
-                <div className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary transition-colors cursor-pointer">
-                  <input
-                    type="file"
-                    id="image"
-                    name="image"
-                    accept="image/*"
-                    onChange={handleImageChange}
-                    className="hidden"
-                  />
-                  <label htmlFor="image" className="cursor-pointer">
-                    {imagePreview ? (
-                      <div className="space-y-4">
-                        <img 
-                          src={imagePreview} 
-                          alt="Preview" 
-                          className="max-h-48 mx-auto rounded-lg object-cover"
-                        />
-                        <p className="text-sm text-muted-foreground">Click to change image</p>
-                      </div>
-                    ) : (
-                      <>
-                        <Upload className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-                        <p className="text-sm text-muted-foreground">
-                          Click to upload an image of the item
-                        </p>
-                      </>
-                    )}
-                  </label>
-                </div>
               </div>
 
               <Button 
@@ -258,7 +191,7 @@ const ReportFound = () => {
                 className="w-full bg-gradient-to-r from-primary to-accent hover:opacity-90"
                 disabled={isLoading}
               >
-                {isLoading ? "Submitting..." : "Submit Report"}
+                {isLoading ? "Submitting..." : "Report Lost Item"}
               </Button>
             </form>
           </Card>
@@ -268,4 +201,4 @@ const ReportFound = () => {
   );
 };
 
-export default ReportFound;
+export default RecoverItem;

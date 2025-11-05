@@ -5,6 +5,7 @@ import { Search, Package, MessageCircle, User, Calendar, MapPin, Clock } from "l
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
+import NotificationBell from "@/components/NotificationBell";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -75,6 +76,7 @@ const Index = () => {
       <div className="absolute top-4 right-4 z-10 flex gap-2 items-center">
         {user ? (
           <>
+            <NotificationBell userId={user.id} />
             <Button variant="secondary" onClick={() => navigate('/messages')}>
               <MessageCircle className="mr-2 h-4 w-4" />
               Messages

@@ -33,6 +33,7 @@ const BrowseItems = () => {
   const [items, setItems] = useState<Item[]>([]);
   const [selectedBuilding, setSelectedBuilding] = useState<string>("all");
   const [selectedDate, setSelectedDate] = useState<string>("");
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [buildings, setBuildings] = useState<string[]>(["all"]);
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
   const [isChatOpen, setIsChatOpen] = useState(false);
@@ -111,7 +112,8 @@ const BrowseItems = () => {
   const filteredItems = items.filter(item => {
     const buildingMatch = selectedBuilding === "all" || item.building === selectedBuilding;
     const dateMatch = !selectedDate || item.date === selectedDate;
-    return buildingMatch && dateMatch;
+    const categoryMatch = selectedCategory === "all" || (item as any).category === selectedCategory;
+    return buildingMatch && dateMatch && categoryMatch;
   });
 
   return (
@@ -138,7 +140,7 @@ const BrowseItems = () => {
 
           {/* Filters */}
           <Card className="p-6 mb-8 animate-scale-in">
-            <div className="grid md:grid-cols-2 gap-4">
+            <div className="grid md:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="building">Filter by Building</Label>
                 <Select value={selectedBuilding} onValueChange={setSelectedBuilding}>
@@ -163,6 +165,26 @@ const BrowseItems = () => {
                   value={selectedDate}
                   onChange={(e) => setSelectedDate(e.target.value)}
                 />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="category">Filter by Category</Label>
+                <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                  <SelectTrigger id="category">
+                    <SelectValue placeholder="All Categories" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Categories</SelectItem>
+                    <SelectItem value="electronics">Electronics</SelectItem>
+                    <SelectItem value="accessories">Accessories</SelectItem>
+                    <SelectItem value="documents">Documents</SelectItem>
+                    <SelectItem value="clothing">Clothing</SelectItem>
+                    <SelectItem value="books">Books & Stationery</SelectItem>
+                    <SelectItem value="keys">Keys</SelectItem>
+                    <SelectItem value="wallet">Wallet/Purse</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           </Card>

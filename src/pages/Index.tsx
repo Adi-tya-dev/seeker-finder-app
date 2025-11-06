@@ -30,7 +30,6 @@ const Index = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [user, setUser] = useState<any>(null);
-  const [returnedItems, setReturnedItems] = useState<Item[]>([]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -41,26 +40,9 @@ const Index = () => {
       setUser(session?.user ?? null);
     });
 
-    fetchReturnedItems();
-
     return () => subscription.unsubscribe();
   }, []);
 
-  const fetchReturnedItems = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('items')
-        .select('*')
-        .eq('status', 'returned')
-        .order('created_at', { ascending: false })
-        .limit(6);
-
-      if (error) throw error;
-      setReturnedItems(data || []);
-    } catch (error: any) {
-      console.error('Error fetching returned items:', error);
-    }
-  };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -214,52 +196,6 @@ const Index = () => {
           </div>
         </div>
       </section>
-
-      {/* Returned Items Section */}
-      {returnedItems.length > 0 && (
-        <section className="container mx-auto px-4 py-16">
-          <h2 className="text-3xl font-bold text-center mb-12">Recently Returned Items</h2>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
-            {returnedItems.map((item) => (
-              <Card key={item.id} className="overflow-hidden">
-                <div className="aspect-video overflow-hidden bg-muted">
-                  {item.image_url ? (
-                    <img 
-                      src={item.image_url} 
-                      alt={item.description}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-muted">
-                      <span className="text-muted-foreground">No image</span>
-                    </div>
-                  )}
-                </div>
-                <CardContent className="p-4 space-y-3">
-                  <p className="font-semibold text-lg">{item.description}</p>
-                  <div className="space-y-1 text-sm text-muted-foreground">
-                    <div className="flex items-center gap-2">
-                      <MapPin className="w-4 h-4" />
-                      <span>{item.building} - {item.classroom}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Calendar className="w-4 h-4" />
-                      <span>{new Date(item.date).toLocaleDateString()}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Clock className="w-4 h-4" />
-                      <span>{item.time}</span>
-                    </div>
-                  </div>
-                  <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 inline-block">
-                    Returned to Owner
-                  </span>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </section>
-      )}
 
       {/* Info Section */}
       <section className="container mx-auto px-4 py-16">

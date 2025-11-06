@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Search, Package, MessageCircle, User, Calendar, MapPin, Clock } from "lucide-react";
+import { Search, Package, MessageCircle, User, Calendar, MapPin, Clock, AlertCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
@@ -138,7 +138,7 @@ const Index = () => {
           </div>
 
           {/* Action Cards */}
-          <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto mt-16">
+          <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto mt-16">
             <div 
               className="group bg-card rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all duration-300 animate-scale-in border border-border"
               style={{ animationDelay: '0.1s' }}
@@ -168,13 +168,38 @@ const Index = () => {
               style={{ animationDelay: '0.2s' }}
             >
               <div className="flex flex-col items-center text-center space-y-6">
-                <div className="p-4 rounded-full bg-gradient-to-br from-secondary to-blue-400">
-                  <Search className="w-12 h-12 text-secondary-foreground" />
+                <div className="p-4 rounded-full bg-gradient-to-br from-destructive to-orange-400">
+                  <AlertCircle className="w-12 h-12 text-destructive-foreground" />
                 </div>
                 <div>
                   <h2 className="text-2xl font-bold mb-2">Lost Something?</h2>
                   <p className="text-muted-foreground mb-6">
-                    Browse through found items and find what you're looking for
+                    Report your lost item so others can help you find it
+                  </p>
+                </div>
+                <Button 
+                  size="lg"
+                  variant="destructive"
+                  onClick={() => navigate('/recover-item')}
+                  className="w-full"
+                >
+                  Report Lost Item
+                </Button>
+              </div>
+            </div>
+
+            <div 
+              className="group bg-card rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all duration-300 animate-scale-in border border-border"
+              style={{ animationDelay: '0.3s' }}
+            >
+              <div className="flex flex-col items-center text-center space-y-6">
+                <div className="p-4 rounded-full bg-gradient-to-br from-secondary to-blue-400">
+                  <Search className="w-12 h-12 text-secondary-foreground" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold mb-2">Browse Items</h2>
+                  <p className="text-muted-foreground mb-6">
+                    Search through found items and find what you're looking for
                   </p>
                 </div>
                 <Button 
@@ -183,7 +208,7 @@ const Index = () => {
                   onClick={() => navigate('/browse-items')}
                   className="w-full"
                 >
-                  Browse Lost Items
+                  Browse Found Items
                 </Button>
               </div>
             </div>

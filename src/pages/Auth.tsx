@@ -15,8 +15,11 @@ const Auth = () => {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
   const [otpCode, setOtpCode] = useState("");
   const [showOtpInput, setShowOtpInput] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [loginMethod, setLoginMethod] = useState<"password" | "otp">("password");
   const [signupEmail, setSignupEmail] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
   const [signupFullName, setSignupFullName] = useState("");
@@ -37,6 +40,31 @@ const Auth = () => {
 
     return () => subscription.unsubscribe();
   }, [navigate]);
+
+  const handlePasswordLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email: loginEmail,
+      password: loginPassword,
+    });
+
+    if (error) {
+      toast({
+        title: "Login failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Success",
+        description: "Logged in successfully",
+      });
+    }
+
+    setIsLoading(false);
+  };
 
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,6 +89,32 @@ const Auth = () => {
         description: "We sent you a 6-digit code",
       });
       setShowOtpInput(true);
+    }
+
+    setIsLoading(false);
+  };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    const { error } = await supabase.auth.resetPasswordForEmail(loginEmail, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+
+    if (error) {
+      toast({
+        title: "Failed to send reset email",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Check your email",
+        description: "We sent you a password reset link",
+      });
+      setShowForgotPassword(false);
+      setLoginMethod("password");
     }
 
     setIsLoading(false);
@@ -149,8 +203,33 @@ const Auth = () => {
               </TabsList>
 
               <TabsContent value="login">
-                {!showOtpInput ? (
-                  <form onSubmit={handleSendOtp} className="space-y-4">
+                {showForgotPassword ? (
+                  <form onSubmit={handleForgotPassword} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="reset-email">Email</Label>
+                      <Input
+                        id="reset-email"
+                        type="email"
+                        placeholder="you@example.com"
+                        value={loginEmail}
+                        onChange={(e) => setLoginEmail(e.target.value)}
+                        required
+                      />
+                    </div>
+                    <Button type="submit" className="w-full" disabled={isLoading}>
+                      {isLoading ? "Sending..." : "Send Reset Link"}
+                    </Button>
+                    <Button 
+                      type="button" 
+                      variant="link" 
+                      className="w-full text-sm" 
+                      onClick={() => setShowForgotPassword(false)}
+                    >
+                      Back to login
+                    </Button>
+                  </form>
+                ) : loginMethod === "password" && !showOtpInput ? (
+                  <form onSubmit={handlePasswordLogin} className="space-y-4">
                     <div className="space-y-2">
                       <Label htmlFor="login-email">Email</Label>
                       <Input
@@ -162,12 +241,63 @@ const Auth = () => {
                         required
                       />
                     </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="login-password">Password</Label>
+                      <Input
+                        id="login-password"
+                        type="password"
+                        value={loginPassword}
+                        onChange={(e) => setLoginPassword(e.target.value)}
+                        required
+                        minLength={6}
+                      />
+                    </div>
+                    <Button type="submit" className="w-full" disabled={isLoading}>
+                      {isLoading ? "Logging in..." : "Login with Password"}
+                    </Button>
+                    <div className="flex justify-between text-sm">
+                      <Button 
+                        type="button" 
+                        variant="link" 
+                        className="p-0 h-auto" 
+                        onClick={() => setShowForgotPassword(true)}
+                      >
+                        Forgot password?
+                      </Button>
+                      <Button 
+                        type="button" 
+                        variant="link" 
+                        className="p-0 h-auto" 
+                        onClick={() => setLoginMethod("otp")}
+                      >
+                        Login with OTP
+                      </Button>
+                    </div>
+                  </form>
+                ) : !showOtpInput ? (
+                  <form onSubmit={handleSendOtp} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="otp-email">Email</Label>
+                      <Input
+                        id="otp-email"
+                        type="email"
+                        placeholder="you@example.com"
+                        value={loginEmail}
+                        onChange={(e) => setLoginEmail(e.target.value)}
+                        required
+                      />
+                    </div>
                     <Button type="submit" className="w-full" disabled={isLoading}>
                       {isLoading ? "Sending..." : "Send Login Code"}
                     </Button>
-                    <p className="text-xs text-muted-foreground text-center">
-                      We'll send a 6-digit code to your email
-                    </p>
+                    <Button 
+                      type="button" 
+                      variant="link" 
+                      className="w-full text-sm" 
+                      onClick={() => setLoginMethod("password")}
+                    >
+                      Login with password
+                    </Button>
                   </form>
                 ) : (
                   <form onSubmit={handleVerifyOtp} className="space-y-4">

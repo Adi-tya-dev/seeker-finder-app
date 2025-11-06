@@ -168,22 +168,21 @@ const Index = () => {
               style={{ animationDelay: '0.2s' }}
             >
               <div className="flex flex-col items-center text-center space-y-6">
-                <div className="p-4 rounded-full bg-gradient-to-br from-destructive to-orange-400">
-                  <AlertCircle className="w-12 h-12 text-destructive-foreground" />
+                <div className="p-4 rounded-full bg-gradient-to-br from-green-500 to-emerald-400">
+                  <Package className="w-12 h-12 text-white" />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold mb-2">Lost Something?</h2>
+                  <h2 className="text-2xl font-bold mb-2">Returned Items</h2>
                   <p className="text-muted-foreground mb-6">
-                    Report your lost item so others can help you find it
+                    View items that have been successfully returned to their owners
                   </p>
                 </div>
                 <Button 
                   size="lg"
-                  variant="destructive"
-                  onClick={() => navigate('/recover-item')}
-                  className="w-full"
+                  onClick={() => navigate('/returned-items')}
+                  className="w-full bg-gradient-to-r from-green-500 to-emerald-400 hover:opacity-90 transition-opacity"
                 >
-                  Report Lost Item
+                  View Returned Items
                 </Button>
               </div>
             </div>

@@ -13,6 +13,7 @@ import Messages from "./pages/Messages";
 import MyItems from "./pages/MyItems";
 import Profile from "./pages/Profile";
 import AdminDashboard from "./pages/AdminDashboard";
+import ReturnedItems from "./pages/ReturnedItems";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -33,6 +34,7 @@ const App = () => (
           <Route path="/report-found" element={<ReportFound />} />
           <Route path="/recover-item" element={<RecoverItem />} />
           <Route path="/browse-items" element={<BrowseItems />} />
+          <Route path="/returned-items" element={<ReturnedItems />} />
           <Route path="/admin" element={<AdminDashboard />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

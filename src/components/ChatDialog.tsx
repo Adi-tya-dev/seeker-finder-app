@@ -35,13 +35,30 @@ const ChatDialog = ({ isOpen, onClose, uploaderProfile, itemId, currentUserId }:
   const [newMessage, setNewMessage] = useState("");
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [currentUserProfile, setCurrentUserProfile] = useState<Profile | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (isOpen) {
       initializeConversation();
+      fetchCurrentUserProfile();
     }
   }, [isOpen, itemId, currentUserId]);
+
+  const fetchCurrentUserProfile = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', currentUserId)
+        .single();
+
+      if (error) throw error;
+      setCurrentUserProfile(data);
+    } catch (error: any) {
+      console.error('Error fetching current user profile:', error);
+    }
+  };
 
   useEffect(() => {
     if (conversationId) {
@@ -223,7 +240,7 @@ const ChatDialog = ({ isOpen, onClose, uploaderProfile, itemId, currentUserId }:
                 {message.sender_id === currentUserId && (
                   <Avatar className="h-8 w-8 flex-shrink-0">
                     <AvatarFallback className="text-xs bg-primary text-primary-foreground">
-                      {uploaderProfile.full_name?.[0] || uploaderProfile.email[0].toUpperCase()}
+                      {currentUserProfile?.full_name?.[0] || currentUserProfile?.email[0].toUpperCase() || 'U'}
                     </AvatarFallback>
                   </Avatar>
                 )}

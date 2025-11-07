@@ -202,8 +202,8 @@ const ChatDialog = ({ isOpen, onClose, uploaderProfile, itemId, currentUserId }:
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea ref={scrollRef} className="flex-1 pr-4">
-          <div className="space-y-4 p-4">
+        <ScrollArea className="flex-1 px-4">
+          <div ref={scrollRef} className="space-y-4 py-4">
             {messages.map((message) => (
               <div
                 key={message.id}

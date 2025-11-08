@@ -6,7 +6,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
-import { Send, User } from "lucide-react";
+import { Send, User, Check, CheckCheck } from "lucide-react";
 
 interface Profile {
   id: string;
@@ -19,6 +19,8 @@ interface Message {
   content: string;
   sender_id: string;
   created_at: string;
+  read: boolean;
+  read_at: string | null;
 }
 
 interface ChatDialogProps {
@@ -36,7 +38,10 @@ const ChatDialog = ({ isOpen, onClose, uploaderProfile, itemId, currentUserId }:
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [currentUserProfile, setCurrentUserProfile] = useState<Profile | null>(null);
+  const [isTyping, setIsTyping] = useState(false);
+  const [otherUserTyping, setOtherUserTyping] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -63,10 +68,11 @@ const ChatDialog = ({ isOpen, onClose, uploaderProfile, itemId, currentUserId }:
   useEffect(() => {
     if (conversationId) {
       fetchMessages();
+      markMessagesAsRead();
       
-      // Subscribe to new messages
+      // Subscribe to new messages and updates
       const channel = supabase
-        .channel(`messages:${conversationId}`)
+        .channel(`conversation:${conversationId}`)
         .on(
           'postgres_changes',
           {
@@ -77,15 +83,44 @@ const ChatDialog = ({ isOpen, onClose, uploaderProfile, itemId, currentUserId }:
           },
           (payload) => {
             setMessages(prev => [...prev, payload.new as Message]);
+            // Mark new message as read if it's not from current user
+            if (payload.new.sender_id !== currentUserId) {
+              markMessagesAsRead();
+            }
           }
         )
-        .subscribe();
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'messages',
+            filter: `conversation_id=eq.${conversationId}`
+          },
+          (payload) => {
+            setMessages(prev => 
+              prev.map(msg => msg.id === payload.new.id ? payload.new as Message : msg)
+            );
+          }
+        )
+        .on('presence', { event: 'sync' }, () => {
+          const presenceState = channel.presenceState();
+          const otherUsers = Object.values(presenceState).flat().filter(
+            (user: any) => user.user_id !== currentUserId
+          );
+          setOtherUserTyping(otherUsers.some((user: any) => user.typing));
+        })
+        .subscribe(async (status) => {
+          if (status === 'SUBSCRIBED') {
+            await channel.track({ user_id: currentUserId, typing: false });
+          }
+        });
 
       return () => {
         supabase.removeChannel(channel);
       };
     }
-  }, [conversationId]);
+  }, [conversationId, currentUserId]);
 
   useEffect(() => {
     // Scroll to bottom when messages change
@@ -132,6 +167,19 @@ const ChatDialog = ({ isOpen, onClose, uploaderProfile, itemId, currentUserId }:
     }
   };
 
+  const markMessagesAsRead = async () => {
+    if (!conversationId) return;
+    
+    try {
+      await supabase.rpc('mark_messages_as_read', {
+        p_conversation_id: conversationId,
+        p_user_id: currentUserId
+      });
+    } catch (error: any) {
+      console.error('Error marking messages as read:', error);
+    }
+  };
+
   const fetchMessages = async () => {
     if (!conversationId) return;
 
@@ -153,11 +201,20 @@ const ChatDialog = ({ isOpen, onClose, uploaderProfile, itemId, currentUserId }:
     }
   };
 
+  const handleTyping = async (typing: boolean) => {
+    if (!conversationId) return;
+    
+    const channel = supabase.channel(`conversation:${conversationId}`);
+    await channel.track({ user_id: currentUserId, typing });
+  };
+
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim() || !conversationId || isLoading) return;
 
     setIsLoading(true);
+    handleTyping(false);
+    
     try {
       const { error } = await supabase
         .from('messages')
@@ -178,6 +235,27 @@ const ChatDialog = ({ isOpen, onClose, uploaderProfile, itemId, currentUserId }:
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setNewMessage(e.target.value);
+    
+    // Clear existing timeout
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+    
+    // Set typing to true
+    if (!isTyping && e.target.value) {
+      setIsTyping(true);
+      handleTyping(true);
+    }
+    
+    // Set timeout to stop typing indicator
+    typingTimeoutRef.current = setTimeout(() => {
+      setIsTyping(false);
+      handleTyping(false);
+    }, 1000);
   };
 
   return (
@@ -226,16 +304,25 @@ const ChatDialog = ({ isOpen, onClose, uploaderProfile, itemId, currentUserId }:
                   }`}
                 >
                   <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-                  <p className={`text-[10px] mt-1 ${
+                  <div className={`flex items-center gap-1 text-[10px] mt-1 ${
                     message.sender_id === currentUserId 
                       ? "text-primary-foreground/70" 
                       : "text-muted-foreground"
                   }`}>
-                    {new Date(message.created_at).toLocaleTimeString([], { 
-                      hour: '2-digit', 
-                      minute: '2-digit' 
-                    })}
-                  </p>
+                    <span>
+                      {new Date(message.created_at).toLocaleTimeString([], { 
+                        hour: '2-digit', 
+                        minute: '2-digit' 
+                      })}
+                    </span>
+                    {message.sender_id === currentUserId && (
+                      message.read ? (
+                        <CheckCheck className="h-3 w-3" />
+                      ) : (
+                        <Check className="h-3 w-3" />
+                      )
+                    )}
+                  </div>
                 </div>
                 {message.sender_id === currentUserId && (
                   <Avatar className="h-8 w-8 flex-shrink-0">
@@ -246,13 +333,29 @@ const ChatDialog = ({ isOpen, onClose, uploaderProfile, itemId, currentUserId }:
                 )}
               </div>
             ))}
+            {otherUserTyping && (
+              <div className="flex gap-2 items-center">
+                <Avatar className="h-8 w-8 flex-shrink-0">
+                  <AvatarFallback className="text-xs">
+                    <User className="h-4 w-4" />
+                  </AvatarFallback>
+                </Avatar>
+                <div className="bg-muted rounded-2xl rounded-bl-sm px-4 py-2">
+                  <div className="flex gap-1">
+                    <span className="animate-bounce" style={{ animationDelay: '0ms' }}>.</span>
+                    <span className="animate-bounce" style={{ animationDelay: '150ms' }}>.</span>
+                    <span className="animate-bounce" style={{ animationDelay: '300ms' }}>.</span>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </ScrollArea>
 
         <form onSubmit={sendMessage} className="flex gap-2 p-4 border-t bg-muted/30">
           <Input
             value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
+            onChange={handleInputChange}
             placeholder="Type a message..."
             disabled={isLoading}
             className="flex-1"

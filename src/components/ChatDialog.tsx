@@ -216,12 +216,28 @@ const ChatDialog = ({ isOpen, onClose, uploaderProfile, itemId, currentUserId }:
     handleTyping(false);
     
     try {
+      // Validate message content
+      const validationResult = messageSchema.safeParse({
+        content: newMessage.trim()
+      });
+
+      if (!validationResult.success) {
+        const firstError = validationResult.error.errors[0];
+        toast({
+          title: "Validation Error",
+          description: firstError.message,
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
+
       const { error } = await supabase
         .from('messages')
         .insert({
           conversation_id: conversationId,
           sender_id: currentUserId,
-          content: newMessage.trim(),
+          content: validationResult.data.content,
         });
 
       if (error) throw error;

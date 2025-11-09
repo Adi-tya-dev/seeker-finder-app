@@ -9,6 +9,7 @@ import { ArrowLeft, Check } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
+import { itemSchema } from "@/lib/validationSchemas";
 
 const RecoverItem = () => {
   const navigate = useNavigate();
@@ -34,17 +35,38 @@ const RecoverItem = () => {
     setIsLoading(true);
     const formData = new FormData(e.currentTarget);
 
+    // Validate input data
+    const validationResult = itemSchema.safeParse({
+      building: formData.get('building'),
+      classroom: formData.get('classroom'),
+      description: formData.get('description'),
+      category: formData.get('category'),
+      date: formData.get('date'),
+      time: formData.get('time')
+    });
+
+    if (!validationResult.success) {
+      const firstError = validationResult.error.errors[0];
+      toast({
+        title: "Validation Error",
+        description: firstError.message,
+        variant: "destructive"
+      });
+      setIsLoading(false);
+      return;
+    }
+
     try {
       const { error: insertError } = await supabase
         .from('items')
         .insert({
           uploader_id: user.id,
-          building: formData.get('building') as string,
-          classroom: formData.get('classroom') as string,
-          date: formData.get('date') as string,
-          time: formData.get('time') as string,
-          description: formData.get('description') as string,
-          category: formData.get('category') as string,
+          building: validationResult.data.building,
+          classroom: validationResult.data.classroom,
+          date: validationResult.data.date,
+          time: validationResult.data.time,
+          description: validationResult.data.description,
+          category: validationResult.data.category,
           status: 'available',
         });
 

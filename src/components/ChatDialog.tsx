@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { Send, User, Check, CheckCheck } from "lucide-react";
+import { messageSchema } from "@/lib/validationSchemas";
 
 interface Profile {
   id: string;
